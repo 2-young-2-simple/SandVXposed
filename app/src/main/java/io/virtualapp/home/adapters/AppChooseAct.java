@@ -1,6 +1,5 @@
 package io.virtualapp.home.adapters;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentUris;
 import android.content.Context;
@@ -12,67 +11,90 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.support.annotation.Nullable;
-import android.support.v7.app.AppCompatActivity;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
-import android.widget.Toast;
 
 
-import java.io.File;
-import java.util.ArrayList;
+import com.lody.virtual.client.core.RomChecker;
+import com.lody.virtual.client.core.VirtualCore;
+import com.sk.installapp.InstallPkgAct;
+
+import java.util.Objects;
 
 import io.virtualapp.R;
-import io.virtualapp.VCommends;
 import io.virtualapp.home.HomeActivity;
 import io.virtualapp.home.ListAppFragment;
-import io.virtualapp.home.ListAppPresenterImpl;
-import io.virtualapp.home.models.AppInfo;
-import io.virtualapp.home.models.AppInfoLite;
 import jonathanfinerty.once.Once;
 
 public class AppChooseAct extends AppCompatActivity
 {
     static public ListAppFragment pActParent = null;
 
+    private boolean useSKInstaller = true;
+
+    private void setupChooseAct()
+    {
+        try
+        {
+            if (!Once.beenDone("disable_safe_mode"))
+            {
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.about)
+                        .setMessage(R.string.safe_mode_enforcing)
+                        .setCancelable(false)
+                        .setPositiveButton(R.string.back, (dialog, which) ->
+                                finish())
+                        .create().show();
+            } else if (!Once.beenDone("appchoose_act_tips"))
+            {
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.about)
+                        .setMessage(R.string.appchoose_tips)
+                        .setCancelable(false)
+                        .setPositiveButton(R.string.accept, (dialog, which) ->
+                        {
+                            Once.markDone("appchoose_act_tips");
+                            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                            intent.setType("*/*");//设置类型，我这里是任意类型，任意后缀的可以这样写。
+                            intent.addCategory(Intent.CATEGORY_OPENABLE);
+                            startActivityForResult(intent, 404);
+                        })
+                        .create().show();
+            } else
+            {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("*/*");//设置类型，我这里是任意类型，任意后缀的可以这样写。
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                startActivityForResult(intent, 404);
+            }
+        }catch (Throwable e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_app_choose);
-
-        if (!Once.beenDone("disable_safe_mode"))
+        AlertDialog.Builder hBuilder = new AlertDialog.Builder(this);
+        hBuilder.setMessage(R.string.use_sk_installer);
+        hBuilder.setTitle(R.string.SK_Settings);
+        hBuilder.setOnCancelListener(dialogInterface -> setupChooseAct());
+        hBuilder.setNegativeButton(R.string.do_not_use, (dialogInterface, i) ->
         {
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.about)
-                    .setMessage(R.string.safe_mode_enforcing)
-                    .setCancelable(false)
-                    .setPositiveButton(R.string.back, (dialog, which) ->
-                            finish())
-                    .create().show();
-        }
-        else if (!Once.beenDone("appchoose_act_tips"))
+            useSKInstaller = false;
+            setupChooseAct();
+        });
+        hBuilder.setPositiveButton(R.string.use, (dialogInterface, i) ->
         {
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.about)
-                    .setMessage(R.string.appchoose_tips)
-                    .setCancelable(false)
-                    .setPositiveButton(R.string.accept, (dialog, which) ->
-                    {
-                        Once.markDone("appchoose_act_tips");
-                        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                        intent.setType("*/*");//设置类型，我这里是任意类型，任意后缀的可以这样写。
-                        intent.addCategory(Intent.CATEGORY_OPENABLE);
-                        startActivityForResult(intent, 404);
-                    })
-                    .create().show();
-        }
-        else
-        {
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.setType("*/*");//设置类型，我这里是任意类型，任意后缀的可以这样写。
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(intent, 404);
-        }
+            useSKInstaller = true;
+            setupChooseAct();
+        })
+                .setCancelable(true)
+                .create().show();
     }
 
     @Override
@@ -149,6 +171,9 @@ public class AppChooseAct extends AppCompatActivity
             }
             // DownloadsProvider
             else if (isDownloadsDocument(uri)) {
+                // May lead crash for ADUI.
+                if(RomChecker.isMiui())return null;
+
                 final String id = DocumentsContract.getDocumentId(uri);
                 Uri contentUri = uri;// = ContentUris.withAppendedId(
                 //        Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
@@ -195,7 +220,15 @@ public class AppChooseAct extends AppCompatActivity
         Uri uri = null;
         if (data != null)
         {
-            uri = data.getData();
+            try
+            {
+                uri = data.getData();
+            }catch (Throwable e)
+            {
+                e.printStackTrace();
+                finish();
+                return;
+            }
         }
         else
         {
@@ -207,37 +240,64 @@ public class AppChooseAct extends AppCompatActivity
             finish();
             return;
         }
-        if ("file".equalsIgnoreCase(uri.getScheme())){//使用第三方应用打开
-            path = uri.getPath();
-            // android.widget.Toast.makeText(this,path,android.widget.Toast.LENGTH_SHORT).show();
-            return;
-        }
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
             try
             {
-                path = getPath(this, uri);
+                String szExStorage = Environment.getExternalStorageDirectory().getAbsolutePath();
+                try
+                {
+                    if (Objects.requireNonNull(uri.getPath()).startsWith(szExStorage))
+                    {
+                        path = uri.getPath();
+                    } else path = getPath(this, uri);
+                }
+                catch (Throwable e)
+                {
+                    path = getPath(this, uri);
+                }
             }catch(Throwable e)
             {
                 e.printStackTrace();
                 finish();
                 return;
             }
-            // android.widget.Toast.makeText(this,path,android.widget.Toast.LENGTH_SHORT).show();
         }
         else
         {
             finish();
             return;
         }
-        if(pActParent==null)
+        if(pActParent==null||path==null)
         {
             finish();
             return;
         }
-        android.widget.Toast.makeText(pActParent.getActivity(),R.string.appInstallTip, Toast.LENGTH_LONG).show();
-        if(HomeActivity.hHomeAct!=null)
-            HomeActivity.hHomeAct.InstallAppByPath(path);
-        pActParent.getActivity().finish();
+        if (useSKInstaller)
+        {
+            // 推荐使用安装器安装，选项更多
+            try
+            {
+                Intent lpInstaller = new Intent(VirtualCore.get().getContext(), InstallPkgAct.class);
+                lpInstaller.setData(Uri.parse(path));
+                startActivity(lpInstaller);
+            } catch (Throwable e)
+            {
+                e.printStackTrace();
+            }
+        }
+        else
+        {
+            try
+            {
+                if (HomeActivity.hHomeAct != null)
+                    HomeActivity.hHomeAct.InstallAppByPath(path);
+            }catch (Throwable e)
+            {
+                e.printStackTrace();
+            }
+        }
+        if(pActParent.getActivity()!=null)
+            pActParent.getActivity().finish();
         finish();
     }
 

@@ -104,9 +104,10 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
     private TaskRecord findTaskByIntentLocked(int userId, Intent intent) {
         for (int i = 0; i < this.mHistory.size(); i++) {
             TaskRecord r = this.mHistory.valueAt(i);
-            if (userId == r.userId && r.taskRoot != null && intent.getComponent().equals(r.taskRoot.getComponent())) {
-                return r;
-            }
+            if(intent.getComponent()!=null)
+                if (userId == r.userId && r.taskRoot != null && intent.getComponent().equals(r.taskRoot.getComponent())) {
+                    return r;
+                }
         }
         return null;
     }
@@ -529,13 +530,11 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
                 isFloating = ent.array.getBoolean(R_Styleable_Window_windowIsFloating, false);
             }else{
                 Resources resources=VirtualCore.get().getResources(targetInfo.packageName);
-                if(resources!=null) {
-                    TypedArray typedArray = resources.newTheme().obtainStyledAttributes(targetInfo.theme, R_Styleable_Window);
-                    if(typedArray!=null){
-                        showWallpaper = typedArray.getBoolean(R_Styleable_Window_windowShowWallpaper, false);
-                        isTranslucent = typedArray.getBoolean(R_Styleable_Window_windowIsTranslucent, false);
-                        isFloating = typedArray.getBoolean(R_Styleable_Window_windowIsFloating, false);
-                    }
+                TypedArray typedArray = resources.newTheme().obtainStyledAttributes(targetInfo.theme, R_Styleable_Window);
+                if(typedArray!=null){
+                    showWallpaper = typedArray.getBoolean(R_Styleable_Window_windowShowWallpaper, false);
+                    isTranslucent = typedArray.getBoolean(R_Styleable_Window_windowIsTranslucent, false);
+                    isFloating = typedArray.getBoolean(R_Styleable_Window_windowIsFloating, false);
                 }
             }
         } catch (Throwable e) {

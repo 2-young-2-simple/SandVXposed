@@ -1,7 +1,7 @@
 package io.virtualapp.home.repo;
 
 import android.graphics.drawable.Drawable;
-import android.support.v4.content.ContextCompat;
+import androidx.core.content.ContextCompat;
 
 import com.lody.virtual.server.pm.parser.VPackage;
 
@@ -15,7 +15,7 @@ public class XAppDataInstalled implements AppData
     @Override
     public boolean isLoading()
     {
-        return false;
+        return true;
     }
 
     @Override
@@ -57,7 +57,7 @@ public class XAppDataInstalled implements AppData
     @Override
     public boolean canLaunch()
     {
-        return true;
+        return false;
     }
 
     @Override
@@ -69,7 +69,7 @@ public class XAppDataInstalled implements AppData
     @Override
     public boolean canCreateShortcut()
     {
-        return true;
+        return false;
     }
 
     @Override

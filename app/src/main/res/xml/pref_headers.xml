@@ -19,7 +19,39 @@
         android:title="@string/SK_Settings" />
 
     <header
+        android:fragment="io.virtualapp.home.SettingAct$SKsetAppLiving"
+        android:title="@string/prevent_killing" />
+
+    <header
         android:fragment="io.virtualapp.home.SettingAct$SKResstart"
         android:title="@string/restartapp" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKAppFloatingWindowSetting"
+        android:title="@string/enable_floating_win" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKAppStorageRedirect"
+        android:title="@string/enable_storage_redirect" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKUpdateAppApps"
+        android:title="@string/onekey_update_app" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKUAppDataSetting"
+        android:title="@string/title_activity_app_data_manager" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKAppWakeUp"
+        android:title="@string/enable_wakeup" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKAppFullScreen"
+        android:title="@string/enable_full_screen" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKDisableAppAdapt"
+        android:title="@string/disable_app_adapt" />
 
 </preference-headers>

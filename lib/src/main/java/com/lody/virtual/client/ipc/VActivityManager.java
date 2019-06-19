@@ -34,6 +34,7 @@ import java.util.Map;
 
 import mirror.android.app.ActivityThread;
 import mirror.android.content.ContentProviderNative;
+import sk.vpkg.provider.BanNotificationProvider;
 
 /**
  * @author Lody
@@ -57,7 +58,8 @@ public class VActivityManager {
         try {
             return getService().startActivity(intent, info, resultTo, options, resultWho, requestCode, userId);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return 0;
         }
     }
 
@@ -65,9 +67,13 @@ public class VActivityManager {
         try {
             return getService().startActivities(intents, resolvedTypes, token, options, userId);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return 0;
         }
     }
+
+    static private boolean is_checked = false;
+    static private boolean is_fullscreen = false;
 
     public int startActivity(Intent intent, int userId) {
         if (userId < 0) {
@@ -76,6 +82,26 @@ public class VActivityManager {
         ActivityInfo info = VirtualCore.get().resolveActivityInfo(intent, userId);
         if (info == null) {
             return ActivityManagerCompat.START_INTENT_NOT_RESOLVED;
+        }
+        try
+        {
+            if(info.metaData!=null)
+            {
+                if (!is_checked)
+                {
+                    String szEnableRedirectStorage = BanNotificationProvider.getString(VirtualCore.get().getContext()
+                            , "enableFullScreen");
+                    if (szEnableRedirectStorage != null) is_fullscreen = true;
+                    is_checked = true;
+                }
+                if (is_fullscreen)
+                {
+                    info.metaData.putString("android.max_aspect", "2.1");
+                }
+            }
+        }catch (Throwable e)
+        {
+            e.printStackTrace();
         }
         return startActivity(intent, info, null, null, null, 0, userId);
     }
@@ -112,7 +138,8 @@ public class VActivityManager {
         try {
             return getService().onActivityDestroyed(VUserHandle.myUserId(), token);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return false;
         }
     }
 
@@ -168,7 +195,8 @@ public class VActivityManager {
         try {
             return getService().stopService(caller != null ? caller.asBinder() : null, service, resolvedType, VUserHandle.myUserId());
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return 0;
         }
     }
 
@@ -176,7 +204,8 @@ public class VActivityManager {
         try {
             return getService().stopServiceToken(className, token, startId, VUserHandle.myUserId());
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return false;
         }
     }
 
@@ -193,7 +222,8 @@ public class VActivityManager {
             IServiceConnection conn = ServiceConnectionDelegate.getDelegate(context, connection, flags);
             return getService().bindService(null, null, service, null, conn, flags, 0);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return 0;
         }
     }
 
@@ -202,7 +232,8 @@ public class VActivityManager {
             IServiceConnection conn = ServiceConnectionDelegate.removeDelegate(context, connection);
             return getService().unbindService(conn, VUserHandle.myUserId());
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return false;
         }
     }
 
@@ -210,7 +241,8 @@ public class VActivityManager {
         try {
             return getService().bindService(caller, token, service, resolvedType, connection, flags, userId);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return 0;
         }
     }
 
@@ -218,7 +250,8 @@ public class VActivityManager {
         try {
             return getService().unbindService(connection, VUserHandle.myUserId());
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return false;
         }
     }
 
@@ -290,7 +323,8 @@ public class VActivityManager {
         try {
             return getService().isAppProcess(processName);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return false;
         }
     }
 
@@ -346,7 +380,8 @@ public class VActivityManager {
         try {
             return getService().isAppPid(pid);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return false;
         }
     }
 
@@ -354,7 +389,8 @@ public class VActivityManager {
         try {
             return getService().getUidByPid(pid);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return 0;
         }
     }
 
@@ -362,7 +398,8 @@ public class VActivityManager {
         try {
             return getService().getSystemPid();
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return 0;
         }
     }
 
@@ -418,7 +455,8 @@ public class VActivityManager {
         try {
             return getService().isAppRunning(packageName, userId);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return false;
         }
     }
 
@@ -426,7 +464,8 @@ public class VActivityManager {
         try {
             return getService().initProcess(packageName, processName, userId);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return 0;
         }
     }
 
@@ -441,7 +480,8 @@ public class VActivityManager {
         try {
             return getService().isVAServiceToken(token);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            VirtualRuntime.crash(e);
+            return false;
         }
     }
 

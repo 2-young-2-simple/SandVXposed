@@ -27,9 +27,12 @@ struct symtab {
     struct symlist *dyn; /* dynamic symbols */
 };
 
+#define xmalloc(x) malloc(x)
+/*
 __always_inline static void* xmalloc(size_t size) {
     return malloc(size);
 }
+*/
 
 __always_inline static int my_pread(int fd, void *buf, size_t count, off_t offset) {
     lseek(fd, offset, SEEK_SET);
@@ -107,10 +110,12 @@ __always_inline static int do_load(int fd, symtab_t symtab) {
         ALOGD("elf error 1\n");
         goto out;
     }
-    if (strncmp((const char *) ELFMAG, (const char *) ehdr.e_ident, SELFMAG)) { /* sanity */
+    /*
+    if (strncmp((const char *) ELFMAG, (const char *) ehdr.e_ident, SELFMAG)) {
         ALOGD("not an elf\n");
         goto out;
     }
+    */
     if (sizeof(Elf32_Shdr) != ehdr.e_shentsize) { /* sanity */
         ALOGD("elf error 2\n");
         goto out;
@@ -322,7 +327,7 @@ __always_inline static int find_libname(const char *libn, char *name, int len, u
         p++;
         if (strncmp(libn, p, strlen(libn)) != 0)
             continue;
-        p += strlen(libn);
+        // p += strlen(libn);
 
         /* here comes our crude test -> 'libc.so' or 'libc-[0-9]' */
         //if (!strncmp("so", p, 2) || 1) // || (p[0] == '-' && isdigit(p[1])))
@@ -352,10 +357,9 @@ __always_inline static int find_libname(const char *libn, char *name, int len, u
 __always_inline static int lookup2(struct symlist *sl, unsigned char type, char *name,
                    unsigned long *val) {
     Elf32_Sym *p;
-    int len;
     int i;
 
-    len = strlen(name);
+    size_t len = strlen(name);
     for (i = 0, p = sl->sym; i < sl->num; i++, p++) {
         //ALOGD("name: %s %x\n", sl->str+p->st_name, p->st_value)
         if (!strncmp(sl->str + p->st_name, name, len)

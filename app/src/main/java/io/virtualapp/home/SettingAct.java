@@ -2,9 +2,7 @@ package io.virtualapp.home;
 
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.media.Ringtone;
@@ -15,21 +13,28 @@ import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
+import androidx.appcompat.app.ActionBar;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.ipc.VActivityManager;
-
-import io.virtualapp.R;
-import io.virtualapp.VApp;
-import jonathanfinerty.once.Once;
+import com.sk.app.SettingUtils;
+import com.sk.app.UpdateExistApp;
+import com.sk.fwindow.skFloattingWin;
+import com.sk.listapp.AppDataManager;
+import com.sk.listapp.XAppManager;
 
 import java.util.List;
+
+import io.virtualapp.R;
+import jonathanfinerty.once.Once;
+import sk.vpkg.live.AutoRunUtils;
+import sk.vpkg.provider.BanNotificationProvider;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings. On
@@ -188,7 +193,15 @@ public class SettingAct extends AppCompatPreferenceActivity
                 || DataSyncPreferenceFragment.class.getName().equals(fragmentName)
                 || NotificationPreferenceFragment.class.getName().equals(fragmentName)
                 || SKResstart.class.getName().equals(fragmentName)
-                || SKSettings.class.getName().equals(fragmentName);
+                || SKSettings.class.getName().equals(fragmentName)
+                || SKsetAppLiving.class.getName().equals(fragmentName)
+                || SKAppFloatingWindowSetting.class.getName().equals(fragmentName)
+                || SKAppStorageRedirect.class.getName().equals(fragmentName)
+                || SKUAppDataSetting.class.getName().equals(fragmentName)
+                || SKAppWakeUp.class.getName().equals(fragmentName)
+                || SKAppFullScreen.class.getName().equals(fragmentName)
+                || SKUpdateAppApps.class.getName().equals(fragmentName)
+                || SKDisableAppAdapt.class.getName().equals(fragmentName);
     }
 
     /**
@@ -204,16 +217,14 @@ public class SettingAct extends AppCompatPreferenceActivity
             super.onCreate(savedInstanceState);
             AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
             hDialog.setTitle(R.string.about);
-            hDialog.setMessage(new String(getResources().getString(R.string.about_info)).
+            hDialog.setMessage(getResources().getString(R.string.about_info).
                     replaceAll("##","\n"));
-            hDialog.setPositiveButton(R.string.back, (dialog, which) ->
-                    getActivity().finish());
-            hDialog.setNegativeButton(R.string.desktop, (dialog, which) ->
-            {
-                HomeActivity.hHomeAct.finish();
-                HomeActivity.goHome(getActivity());
-                getActivity().finish();
-            }).setCancelable(false).create().show();
+            hDialog.setPositiveButton(R.string.desktop, (dialog, which) ->
+                    getActivity().finish())
+                    .setCancelable(false).create().show();
+            hDialog.setNegativeButton(R.string.back, (dialog, which) ->
+                    dialog.dismiss())
+                    .setCancelable(false).create().show();
         }
 
         @Override
@@ -341,21 +352,9 @@ public class SettingAct extends AppCompatPreferenceActivity
         public void onCreate(Bundle savedInstanceState)
         {
             super.onCreate(savedInstanceState);
-            android.widget.Toast.makeText(VApp.getApp(), R.string.SK_Thecoming, android.widget.Toast.LENGTH_LONG).show();
-            addPreferencesFromResource(R.xml.pref_appset);
-            setHasOptionsMenu(true);
-            /* TODO: implement function. */
-            AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
-            hDialog.setMessage(R.string.SK_Thecoming);
-            hDialog.setTitle("The coming...").setNegativeButton(R.string.back,
-                    (dialog, which) -> getActivity().finish());
-            hDialog.setPositiveButton(R.string.desktop, (dialog, which) ->
-            {
-                HomeActivity.goHome(getActivity());
-                getActivity().finish();
-            });
-            hDialog.create().show();
-            /* TODO: implement function. */
+            Intent hAppInfoSettings=new Intent(getActivity(), XAppManager.class);
+            getActivity().startActivity(hAppInfoSettings);
+            getActivity().finish();
         }
 
         @Override
@@ -381,6 +380,385 @@ public class SettingAct extends AppCompatPreferenceActivity
             VActivityManager.get().killAllApps();
             Toast.makeText(getActivity(),R.string.restartfinish,Toast.LENGTH_LONG).show();
             getActivity().finish();
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingAct.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public static class SKsetAppLiving extends PreferenceFragment
+    {
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_data_sync);
+            setHasOptionsMenu(true);
+
+            AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
+            hDialog.setMessage(R.string.non_stop);
+            hDialog.setTitle(R.string.SK_Settings).setNegativeButton(R.string.disable,
+                    (dialog, which) ->
+                    {
+                        if (Once.beenDone("app_force_live"))
+                        {
+                            Once.clearDone("app_force_live");
+                        }
+                        try
+                        {
+                            String ismakeMeLiveEnable = BanNotificationProvider.getString(
+                                    VirtualCore.get().getContext(),
+                                    "makeMeLive"
+                            );
+                            if(ismakeMeLiveEnable!=null)
+                            {
+                                BanNotificationProvider.remove(VirtualCore.get().getContext(),
+                                        "makeMeLive"
+                                        );
+                            }
+                        }
+                        catch (Throwable e)
+                        {
+                            e.printStackTrace();
+                        }
+                        getActivity().finish();
+                    });
+            hDialog.setPositiveButton(R.string.enable, (dialog, which) ->
+            {
+                if (!Once.beenDone("app_force_live"))
+                {
+                    Once.markDone("app_force_live");
+                }
+                try
+                {
+                    String ismakeMeLiveEnable = BanNotificationProvider.getString(
+                            VirtualCore.get().getContext(),
+                            "makeMeLive"
+                    );
+                    if(ismakeMeLiveEnable==null)
+                    {
+                        BanNotificationProvider.save(VirtualCore.get().getContext(),
+                                "makeMeLive",
+                                "Enabled"
+                        );
+                    }
+                    SettingUtils.enterWhiteListSetting(VirtualCore.get().getContext());
+                }catch (Throwable e)
+                {
+                    e.printStackTrace();
+                }
+                getActivity().finish();
+            })
+                    .setCancelable(false);
+            hDialog.create().show();
+
+            // Bind the summaries of EditText/List/Dialog/Ringtone preferences
+            // to their values. When their values change, their summaries are
+            // updated to reflect the new value, per the Android Design
+            // guidelines.
+            bindPreferenceSummaryToValue(findPreference("sync_frequency"));
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingAct.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public static class SKAppFloatingWindowSetting extends PreferenceFragment
+    {
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_appset);
+            setHasOptionsMenu(true);
+            AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
+            hDialog.setMessage(R.string.ensure_enable_floating_win);
+            hDialog.setTitle(R.string.SK_Settings).setNegativeButton(R.string.disable,
+                    (dialog, which) ->
+                    {
+                        if (Once.beenDone("enable_floating_win"))
+                        {
+                            Once.clearDone("enable_floating_win");
+                        }
+                        getActivity().stopService(new Intent
+                                (getActivity(), skFloattingWin.class));
+                        getActivity().finish();
+                    });
+            hDialog.setPositiveButton(R.string.enable, (dialog, which) ->
+            {
+                if (!Once.beenDone("enable_floating_win"))
+                {
+                    Once.markDone("enable_floating_win");
+                }
+                getActivity().startService(new Intent
+                        (getActivity(), skFloattingWin.class));
+                getActivity().finish();
+            })
+                    .setCancelable(false);
+            hDialog.create().show();
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingAct.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public static class SKAppStorageRedirect extends PreferenceFragment
+    {
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_appset);
+            setHasOptionsMenu(true);
+            AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
+            hDialog.setMessage(R.string.ensure_enable_storage_redirect);
+            hDialog.setTitle(R.string.SK_Settings).setNegativeButton(R.string.disable,
+                    (dialog, which) ->
+                    {
+                        String szEnableRedirectStorage = BanNotificationProvider.getString(getActivity(),"StorageRedirect");
+                        if(szEnableRedirectStorage!=null)
+                        {
+                            BanNotificationProvider.remove(getActivity(),"StorageRedirect");
+                        }
+                        getActivity().finish();
+                    });
+            hDialog.setPositiveButton(R.string.enable, (dialog, which) ->
+            {
+                String szEnableRedirectStorage = BanNotificationProvider.getString(getActivity(),"StorageRedirect");
+                if(szEnableRedirectStorage==null)
+                {
+                    BanNotificationProvider.save(getActivity(),"StorageRedirect","Enabled");
+                }
+                getActivity().finish();
+            })
+                    .setCancelable(false);
+            hDialog.create().show();
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingAct.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public static class SKUpdateAppApps extends PreferenceFragment
+    {
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_appset);
+            setHasOptionsMenu(true);
+            if(getActivity()==null)return;
+            AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
+            hDialog.setMessage(R.string.sk_upgrade_localapp);
+            hDialog.setPositiveButton(R.string.accept, (dialog, which) ->
+            {
+                getActivity().startActivity(new Intent(getActivity(), UpdateExistApp.class));
+                getActivity().finish();
+            })
+                    .setNegativeButton(R.string.back, (dialog, which) -> getActivity().finish())
+                    .setTitle(R.string.title_activity_update_exist_app)
+                    .setCancelable(false)
+                    .create().show();
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingAct.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public static class SKUAppDataSetting extends PreferenceFragment
+    {
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_appset);
+            setHasOptionsMenu(true);
+            if(getActivity()==null)return;
+            getActivity().startActivity(new Intent(getActivity(), AppDataManager.class));
+            getActivity().finish();
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingAct.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public static class SKAppWakeUp extends PreferenceFragment
+    {
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_appset);
+            setHasOptionsMenu(true);
+            AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
+            hDialog.setMessage(R.string.wake_up_setting);
+            hDialog.setTitle(R.string.enable_wakeup).setNegativeButton(R.string.disable,
+                    (dialog, which) ->
+                    {
+                        AutoRunUtils.disableWakeUp();
+                        getActivity().finish();
+                    });
+            hDialog.setPositiveButton(R.string.enable, (dialog, which) ->
+            {
+                AutoRunUtils.enableWakeUp();
+                getActivity().finish();
+            })
+                    .setCancelable(false);
+            hDialog.create().show();
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingAct.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public static class SKAppFullScreen extends PreferenceFragment
+    {
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_appset);
+            setHasOptionsMenu(true);
+            AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
+            hDialog.setMessage(R.string.enable_full_screen);
+            hDialog.setTitle(R.string.SK_Settings).setNegativeButton(R.string.disable,
+                    (dialog, which) ->
+                    {
+                        String szEnableRedirectStorage = BanNotificationProvider.getString(getActivity(),"enableFullScreen");
+                        if(szEnableRedirectStorage!=null)
+                        {
+                            BanNotificationProvider.remove(getActivity(),"enableFullScreen");
+                        }
+                        getActivity().finish();
+                    });
+            hDialog.setPositiveButton(R.string.enable, (dialog, which) ->
+            {
+                String szEnableRedirectStorage = BanNotificationProvider.getString(getActivity(),"enableFullScreen");
+                if(szEnableRedirectStorage==null)
+                {
+                    BanNotificationProvider.save(getActivity(),"enableFullScreen","Enabled");
+                }
+                getActivity().finish();
+            })
+                    .setCancelable(false);
+            hDialog.create().show();
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingAct.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    public static class SKDisableAppAdapt extends PreferenceFragment
+    {
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_appset);
+            setHasOptionsMenu(true);
+            AlertDialog.Builder hDialog = new AlertDialog.Builder(getActivity());
+            hDialog.setMessage(R.string.disabel_app_adapt_tip);
+            hDialog.setTitle(R.string.disable_app_adapt).setNegativeButton(R.string.disable,
+                    (dialog, which) ->
+                    {
+                        String szEnableRedirectStorage = BanNotificationProvider.getString(getActivity(),"disableAdaptApp");
+                        if(szEnableRedirectStorage==null)
+                        {
+                            BanNotificationProvider.save(getActivity(),"disableAdaptApp","disabled");
+                        }
+                        getActivity().finish();
+                    });
+            hDialog.setPositiveButton(R.string.enable, (dialog, which) ->
+            {
+                String szEnableRedirectStorage = BanNotificationProvider.getString(getActivity(),"disableAdaptApp");
+                if(szEnableRedirectStorage!=null)
+                {
+                    BanNotificationProvider.remove(getActivity(),"disableAdaptApp");
+                }
+                getActivity().finish();
+            })
+                    .setCancelable(false);
+            hDialog.create().show();
         }
 
         @Override

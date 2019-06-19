@@ -24,7 +24,6 @@ import android.os.Bundle;
 import android.os.ConditionVariable;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.PersistableBundle;
 import android.os.Process;
 import android.os.RemoteException;
 
@@ -48,19 +47,21 @@ import com.lody.virtual.helper.utils.BitmapUtils;
 import com.lody.virtual.os.VUserHandle;
 import com.lody.virtual.remote.InstallResult;
 import com.lody.virtual.remote.InstalledAppInfo;
-import com.lody.virtual.server.interfaces.IAppManager;
 import com.lody.virtual.server.ServiceCache;
+import com.lody.virtual.server.interfaces.IAppManager;
 import com.lody.virtual.server.interfaces.IAppRequestListener;
 import com.lody.virtual.server.interfaces.IPackageObserver;
 import com.lody.virtual.server.interfaces.IUiCallback;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Random;
 
 import dalvik.system.DexFile;
-import mirror.android.app.Activity;
 import mirror.android.app.ActivityThread;
+import sk.vpkg.location.getPkgLocation;
+import sk.vpkg.manager.RenameAppUtils;
+import sk.vpkg.notification.SKVPackageNotificationHook;
+import sk.vpkg.xposed.XposedUtils;
 
 /**
  * @author Lody
@@ -374,7 +375,8 @@ public final class VirtualCore {
         try {
             return getService().isOutsidePackageVisible(pkg);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            e.printStackTrace();
+            return false;
         }
     }
 
@@ -382,7 +384,8 @@ public final class VirtualCore {
         try {
             return getService().isAppInstalled(pkg);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            e.printStackTrace();
+            return false;
         }
     }
 
@@ -442,7 +445,14 @@ public final class VirtualCore {
     }
 
     public boolean createShortcut(int userId, String packageName, Intent splash, OnEmitShortcutListener listener) {
-        InstalledAppInfo setting = getInstalledAppInfo(packageName, 0);
+        InstalledAppInfo setting = null;
+        try {
+            setting = getInstalledAppInfo(packageName, 0);
+        }catch (Throwable e)
+        {
+            e.printStackTrace();
+            return false;
+        }
         if (setting == null) {
             return false;
         }
@@ -458,7 +468,7 @@ public final class VirtualCore {
             return false;
         }
         if (listener != null) {
-            String newName = listener.getName(name);
+            String newName = listener.getNameEx(packageName,name,userId);
             if (newName != null) {
                 name = newName;
             }
@@ -537,7 +547,7 @@ public final class VirtualCore {
             return false;
         }
         if (listener != null) {
-            String newName = listener.getName(name);
+            String newName = listener.getNameEx(packageName,name,userId);
             if (newName != null) {
                 name = newName;
             }
@@ -579,7 +589,8 @@ public final class VirtualCore {
         try {
             return getService().getInstalledAppInfo(pkg, flags);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            // return VirtualRuntime.crash(e);
+            return null;
         }
     }
 
@@ -587,7 +598,9 @@ public final class VirtualCore {
         try {
             return getService().getInstalledAppCount();
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            e.printStackTrace();
+            return 0;
+            // return VirtualRuntime.crash(e);
         }
     }
 
@@ -597,6 +610,13 @@ public final class VirtualCore {
 
     public boolean uninstallPackageAsUser(String pkgName, int userId) {
         try {
+            try{
+                RenameAppUtils.undoRenameByUid(pkgName, userId);
+            }
+            catch (Throwable e)
+            {
+                e.printStackTrace();
+            }
             return getService().uninstallPackageAsUser(pkgName, userId);
         } catch (RemoteException e) {
             // Ignore
@@ -605,6 +625,24 @@ public final class VirtualCore {
     }
 
     public boolean uninstallPackage(String pkgName) {
+        try{
+            RenameAppUtils.undoRenameByUid(pkgName, 0);
+        }
+        catch (Throwable e)
+        {
+            e.printStackTrace();
+        }
+        try
+        {
+            SKVPackageNotificationHook hHook = new SKVPackageNotificationHook();
+            hHook.CleanPackage(pkgName);
+        }
+        catch (Throwable e)
+        {
+            e.printStackTrace();
+        }
+        getPkgLocation.removeLocFromPkg(pkgName);
+        XposedUtils.clearXposed(pkgName);
         try {
             return getService().uninstallPackage(pkgName);
         } catch (RemoteException e) {
@@ -739,7 +777,9 @@ public final class VirtualCore {
         try {
             return getService().isPackageLaunched(userId, packageName);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            e.printStackTrace();
+            return false;
+            // return VirtualRuntime.crash(e);
         }
     }
 
@@ -755,7 +795,9 @@ public final class VirtualCore {
         try {
             return getService().installPackageAsUser(userId, packageName);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            e.printStackTrace();
+            return false;
+            // return VirtualRuntime.crash(e);
         }
     }
 
@@ -763,7 +805,9 @@ public final class VirtualCore {
         try {
             return getService().isAppInstalledAsUser(userId, packageName);
         } catch (RemoteException e) {
-            return VirtualRuntime.crash(e);
+            e.printStackTrace();
+            return false;
+            // return VirtualRuntime.crash(e);
         }
     }
 
@@ -840,6 +884,8 @@ public final class VirtualCore {
         Bitmap getIcon(Bitmap originIcon);
 
         String getName(String originName);
+
+        String getNameEx(String packageName,String pkgName,int uid);
     }
 
     public static abstract class VirtualInitializer {

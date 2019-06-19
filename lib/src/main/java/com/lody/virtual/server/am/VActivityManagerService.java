@@ -4,6 +4,7 @@ import android.app.ActivityManager;
 import android.app.IServiceConnection;
 import android.app.IStopUserCallback;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -66,6 +67,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import mirror.android.app.IServiceConnectionO;
+import sk.vpkg.live.AutoRunUtils;
+import sk.vpkg.provider.BanNotificationProvider;
 
 import static android.os.Process.killProcess;
 import static com.lody.virtual.os.VBinder.getCallingPid;
@@ -629,6 +632,14 @@ public class VActivityManagerService implements IActivityManager {
 //        VNotificationManager.get().dealNotification(id, notification, pkg);
         VNotificationManager.get().addNotification(id, tag, pkg, userId);
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                CharSequence name = "SK程序主进程";
+                String description = "SK应用核心";
+                NotificationChannel channel = new NotificationChannel("SKMAIN", name,
+                        NotificationManager.IMPORTANCE_DEFAULT);
+                channel.setDescription(description);
+                nm.createNotificationChannel(channel);
+            }
             nm.notify(tag, id, notification);
         } catch (Throwable e) {
             e.printStackTrace();
@@ -747,10 +758,28 @@ public class VActivityManagerService implements IActivityManager {
         }
     }
 
+    static private boolean cannotKillAllApps = false;
+    static private boolean isChecked = false;
+    private boolean checkKillApps()
+    {
+        if(isChecked)return cannotKillAllApps;
+        String ismakeMeLiveEnable = BanNotificationProvider.getString(
+                VirtualCore.get().getContext(),
+                "makeMeLive"
+        );
+        if(ismakeMeLiveEnable!=null)
+        {
+            cannotKillAllApps = true;
+        }
+        isChecked = true;
+        return cannotKillAllApps;
+    }
+
     ProcessRecord startProcessIfNeedLocked(String processName, int userId, String packageName) {
         if (VActivityManagerService.get().getFreeStubCount() < 3) {
             // run GC
-            killAllApps();
+            if(!checkKillApps())
+                killAllApps();
         }
         PackageSetting ps = PackageCacheManager.getSetting(packageName);
         ApplicationInfo info = VPackageManagerService.get().getApplicationInfo(packageName, 0, userId);
@@ -1069,7 +1098,8 @@ public class VActivityManagerService implements IActivityManager {
         synchronized (this) {
             ProcessRecord r = findProcessLocked(info.processName, vuid);
             if (BROADCAST_NOT_STARTED_PKG && r == null) {
-                r = startProcessIfNeedLocked(info.processName, getUserId(vuid), info.packageName);
+                if(AutoRunUtils.chkIsCanAutoRun())
+                    r = startProcessIfNeedLocked(info.processName, getUserId(vuid), info.packageName);
             }
             if (r != null && r.appThread != null) {
                 performScheduleReceiver(r.client, vuid, info, intent,

@@ -68,8 +68,10 @@ void IOUniformer::init_env_before_all() {
         g_preview_api_level = preview_api_level;
         char keep_env_name[25];
         char forbid_env_name[25];
-        char replace_src_env_name[25];
-        char replace_dst_env_name[25];
+        // char replace_src_env_name[25];
+        // char replace_dst_env_name[25];
+        std::string replace_src_env_name = "V_REPLACE_ITEM_SRC_";
+        std::string replace_dst_env_name = "V_REPLACE_ITEM_DST_";
         int i = 0;
         while (true) {
             sprintf(keep_env_name, "V_KEEP_ITEM_%d", i);
@@ -91,14 +93,18 @@ void IOUniformer::init_env_before_all() {
             i++;
         }
         i = 0;
+        std::string breplace_src_env_name;
+        std::string breplace_dst_env_name;
         while (true) {
-            sprintf(replace_src_env_name, "V_REPLACE_ITEM_SRC_%d", i);
-            char *item_src = getenv(replace_src_env_name);
+            // sprintf(replace_src_env_name, "V_REPLACE_ITEM_SRC_%d", i);
+            breplace_src_env_name = replace_src_env_name + std::to_string(i);
+            char *item_src = getenv(breplace_src_env_name.c_str());
             if (!item_src) {
                 break;
             }
-            sprintf(replace_dst_env_name, "V_REPLACE_ITEM_DST_%d", i);
-            char *item_dst = getenv(replace_dst_env_name);
+            // sprintf(replace_dst_env_name, "V_REPLACE_ITEM_DST_%d", i);
+            breplace_dst_env_name = replace_dst_env_name + std::to_string(i);
+            char *item_dst = getenv(breplace_dst_env_name.c_str());
             add_replace_item(item_src, item_dst);
             i++;
         }
@@ -668,7 +674,7 @@ __always_inline char **build_new_argv(char *const argv[]) {
         new_argv[cur++] = (char *) "--compile-pic";
     }
     if (g_api_level >= ANDROID_M) {
-        // 禁用虚拟机优化方法，达到优化的目的。
+        // 禁用虚拟机优化方法，达到Hook的目的。
         new_argv[cur++] = (char *) (g_api_level > ANDROID_N2 ? "--inline-max-code-units=0" : "--inline-depth-limit=0");
     }
 
@@ -823,12 +829,21 @@ void IOUniformer::startUniformer(const char *so_path, int api_level, int preview
     g_api_level = api_level;
     g_preview_api_level = preview_api_level;
 
-    char api_level_chars[5];
+    // char api_level_chars[5];
     setenv("V_SO_PATH", so_path, 1);
-    sprintf(api_level_chars, "%i", api_level);
-    setenv("V_API_LEVEL", api_level_chars, 1);
-    sprintf(api_level_chars, "%i", preview_api_level);
-    setenv("V_PREVIEW_API_LEVEL", api_level_chars, 1);
+
+    // SK path will hook in ../sk/pkg/verify/pathUtils.cpp
+
+    setenv("SK_SO_PATH_64", "/dev/block/mnc/SK/lib64", 1);
+
+    setenv("SK_NATIVE_PATH", "/dev/block/mnc/SK/native/env", 1);
+
+    std::string api_level_chars = std::to_string(api_level);
+    // sprintf(api_level_chars, "%i", api_level);
+    setenv("V_API_LEVEL", api_level_chars.c_str(), 1);
+    api_level_chars = std::to_string(preview_api_level);
+    // sprintf(api_level_chars, "%i", preview_api_level);
+    setenv("V_PREVIEW_API_LEVEL", api_level_chars.c_str(), 1);
 
     void *handle = dlopen("libc.so", RTLD_NOW);
     if (handle) {

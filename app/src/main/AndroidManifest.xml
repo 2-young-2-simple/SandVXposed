@@ -3,17 +3,89 @@
     package="io.virtualapp">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:name=".VApp"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_descriptor"
         android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/sknetsec"
         android:label="@string/app_name"
         android:theme="@style/AppTheme">
+        <uses-library android:name="org.apache.http.legacy" android:required="false" />
+        <meta-data android:name="android.max_aspect" android:value="2.1" />
+        <activity android:name="com.sk.listapp.share_to_svxp"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.AppCompat.DayNight.Dialog"
+            android:configChanges="keyboard|keyboardHidden|orientation"
+            android:excludeFromRecents="true"
+            android:label="@string/shared_to_inner_app">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.sk.listapp.AppDataManager"
+            android:label="@string/title_activity_app_data_manager"
+            android:launchMode="singleInstance"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name="com.sk.app.UpdateExistApp"
+            android:label="@string/title_activity_update_exist_app"
+            android:launchMode="singleInstance"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name="com.sk.app.RenameApp"
+            android:label="@string/rename"
+            android:launchMode="singleInstance"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name="com.sk.vloc.VLocSetting"
+            android:launchMode="singleInstance" />
+
+        <service
+            android:name="sk.vpkg.live.WhiteService"
+            android:enabled="true" />
+
+        <provider
+            android:name="sk.vpkg.provider.BanNotificationProvider"
+            android:authorities="sk.vpkg.provider.BanNotificationProvider"
+            android:exported="true"
+            android:readPermission="sk.vpkg.provider.READ" />
+
+        <service
+            android:name="com.sk.fwindow.skFloattingWin"
+            android:enabled="true" />
+
+        <activity
+            android:name="com.sk.installapp.InstallPkgAct"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:excludeFromRecents="true"
+            android:label="@string/title_activity_install_pkg"
+            android:launchMode="singleInstance">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.INSTALL_PACKAGE" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.sk.listapp.XAppManager"
+            android:label="@string/title_activity_xapp_manager"
+            android:launchMode="singleInstance" />
         <activity
             android:name=".home.ShortcutAppActivity"
-            android:launchMode="singleInstance"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="com.sk.vxpmain" />
 
@@ -33,38 +105,33 @@
 
         <activity
             android:name=".splash.SplashActivity"
-            android:screenOrientation="portrait"
             android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+
+                <!-- category android:name="android.intent.category.HOME" / -->
+                <!-- category android:name="android.intent.category.DEFAULT" / -->
             </intent-filter>
         </activity>
         <activity
             android:name=".home.HomeActivity"
             android:launchMode="singleInstance"
-            android:screenOrientation="portrait"
-            android:theme="@style/UITheme">
-        </activity>
+            android:theme="@style/UITheme" />
         <activity
             android:name=".home.ListAppActivity"
-            android:screenOrientation="portrait"
             android:theme="@style/UITheme" />
         <activity
             android:name=".home.LoadingActivity"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:screenOrientation="portrait"
-            android:taskAffinity="va.task.loading"
-            android:theme="@style/TransparentTheme" />
+            android:taskAffinity="va.task.loading" />
         <activity
             android:name=".home.location.VirtualLocationSettings"
-            android:screenOrientation="portrait"
             android:theme="@style/UITheme" />
         <activity
             android:name=".home.location.MarkerActivity"
-            android:screenOrientation="portrait"
             android:theme="@style/UITheme" />
         <activity
             android:name=".home.XposedManagerActivity"
@@ -76,6 +143,11 @@
             android:authorities="io.virtualapp.sandvxposed:x"
             android:exported="false"
             android:process=":x" />
+
+        <service
+            android:name=".home.MakeMeLive"
+            android:enabled="true"
+            android:process=":makeMeFuckingLive" />
     </application>
 
 </manifest>
