@@ -7,6 +7,10 @@
         android:title="@string/about" />
 
     <header
+        android:fragment="io.virtualapp.home.SettingAct$SKPrivacyPolicy"
+        android:title="@string/user_privacy_policy" />
+
+    <header
         android:fragment="io.virtualapp.home.SettingAct$NotificationPreferenceFragment"
         android:title="@string/enable_search_app" />
 
@@ -53,5 +57,21 @@
     <header
         android:fragment="io.virtualapp.home.SettingAct$SKDisableAppAdapt"
         android:title="@string/disable_app_adapt" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKEnableAppSearch"
+        android:title="@string/enable_app_scan" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKUseNewDesktop"
+        android:title="@string/sk_use_desktop" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKInstallAppByPath"
+        android:title="@string/sk_install_app_by_path" />
+
+    <header
+        android:fragment="io.virtualapp.home.SettingAct$SKKernelSwitch"
+        android:title="@string/switch_kernel" />
 
 </preference-headers>

@@ -1,3 +1,5 @@
 /build
 /release
 *.apk
+src/main/res2
+dict.txt

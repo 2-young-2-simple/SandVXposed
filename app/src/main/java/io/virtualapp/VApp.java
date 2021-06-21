@@ -2,13 +2,16 @@ package io.virtualapp;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
+
 import androidx.multidex.MultiDexApplication;
 
 import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.stub.VASettings;
+import com.lody.virtual.helper.utils.VLog;
 import com.lody.virtual.sandxposed.SandXposed;
-// import com.trend.lazyinject.buildmap.Auto_ComponentBuildMap;
-// import com.trend.lazyinject.lib.LazyInject;
+import com.sk.ace.ability.SlimXposed;
+import com.sk.dexdumper.DumpDexV2;
 
 import io.virtualapp.delegate.MyAppRequestListener;
 import io.virtualapp.delegate.MyComponentDelegate;
@@ -31,10 +34,33 @@ public class VApp extends MultiDexApplication {
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
-        SandXposed.init();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            SandXposed.freeReflection(base);
+        }
+        if(Build.VERSION.SDK_INT >= 30)
+        {
+            com.sk.SKAppLoad.InitApp.bindApplicationPassCheck();
+        }
+        try{
+            com.sk.SKAppLoad.InitApp.emplaceDeviceCompat();
+        }catch (Exception ignored)
+        {
+        }
+        SlimXposed.init(base);
+        VLog.OPEN_LOG = BuildConfig.DEBUG;
         mPreferences = base.getSharedPreferences("va", Context.MODE_MULTI_PROCESS);
         VASettings.ENABLE_IO_REDIRECT = true;
         VASettings.ENABLE_INNER_SHORTCUT = false;
+        try{
+            if(DumpDexV2.isDumpEnabled(base))
+            {
+                DumpDexV2.dumpDexDirectly(DumpDexV2.buildAndCleanUpDir(base).
+                        getAbsolutePath());
+            }
+        }catch (Exception e)
+        {
+            e.printStackTrace();
+        }
         try {
             VirtualCore.get().startup(base);
         } catch (Throwable e) {

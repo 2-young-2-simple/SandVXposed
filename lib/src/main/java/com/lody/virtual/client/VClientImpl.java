@@ -1,6 +1,7 @@
 package com.lody.virtual.client;
 
 import android.annotation.SuppressLint;
+import android.app.ActivityManager;
 import android.app.Application;
 import android.app.Instrumentation;
 import android.content.BroadcastReceiver;
@@ -25,7 +26,6 @@ import android.os.Message;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.StrictMode;
-import android.util.Log;
 
 import com.lody.virtual.client.core.CrashHandler;
 import com.lody.virtual.client.core.InvocationStubManager;
@@ -40,7 +40,6 @@ import com.lody.virtual.client.hook.secondary.ProxyServiceFactory;
 import com.lody.virtual.client.ipc.VActivityManager;
 import com.lody.virtual.client.ipc.VDeviceManager;
 import com.lody.virtual.client.ipc.VPackageManager;
-import com.lody.virtual.client.ipc.VirtualStorageManager;
 import com.lody.virtual.client.stub.VASettings;
 import com.lody.virtual.helper.compat.BuildCompat;
 import com.lody.virtual.helper.compat.StorageManagerCompat;
@@ -54,6 +53,7 @@ import com.lody.virtual.sandxposed.SandXposed;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -80,6 +80,7 @@ import mirror.android.view.ThreadedRenderer;
 import mirror.com.android.internal.content.ReferrerIntent;
 import mirror.dalvik.system.VMRuntime;
 import mirror.java.lang.ThreadGroupN;
+import sk.vpkg.fasthook.SKDidNetProtocol;
 import sk.vpkg.provider.BanNotificationProvider;
 import sk.vpkg.xposed.XposedUtils;
 
@@ -99,7 +100,7 @@ public final class VClientImpl extends IVClient.Stub {
     private static final VClientImpl gClient = new VClientImpl();
     private final H mH = new H();
     private ConditionVariable mTempLock;
-    private Instrumentation mInstrumentation = AppInstrumentation.getDefault();
+    private final Instrumentation mInstrumentation = AppInstrumentation.getDefault();
     private IBinder token;
     private int vuid;
     private VDeviceInfo deviceInfo;
@@ -196,11 +197,35 @@ public final class VClientImpl extends IVClient.Stub {
                     Collections.singletonList(intent)
             );
         } else {
-            ActivityThreadNMR1.performNewIntents.call(
-                    VirtualCore.mainThread(),
-                    data.token,
-                    Collections.singletonList(intent),
-                    true);
+            // Available in business edition for Android 12
+            // QQ 3068083845
+            if (BuildCompat.isQ() && !BuildCompat.isS()) {
+                ActivityThread.handleNewIntent.call(VirtualCore.mainThread(), data.token, Collections.singletonList(intent));
+            } else {
+                ActivityThreadNMR1.performNewIntents.call(
+                        VirtualCore.mainThread(),
+                        data.token,
+                        Collections.singletonList(intent),
+                        true);
+            }
+        }
+
+        if("com.tencent.mm".equals(getCurrentPackage())){
+            //QQ647564826
+            //修复微信按2次返回键退出
+            //第二次是因为是在顶层activity，微信用了Process.kill导致重启。
+            if(intent.getComponent() != null && intent.getComponent().getClassName().toLowerCase()
+                    .endsWith(".ui.launcherui")){
+                if(intent.getBooleanExtra("can_finish", false)){
+                    Intent home = new Intent(Intent.ACTION_MAIN);
+                    home.addCategory(Intent.CATEGORY_HOME);
+                    home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    try {
+                        VirtualCore.get().getContext().startActivity(home);
+                    } catch (Throwable ignore) {
+                    }
+                }
+            }
         }
     }
 
@@ -252,7 +277,7 @@ public final class VClientImpl extends IVClient.Stub {
         data.appInfo = VPackageManager.get().getApplicationInfo(packageName, 0, getUserId(vuid));
         data.processName = processName;
         data.providers = VPackageManager.get().queryContentProviders(processName, getVUid(), PackageManager.GET_META_DATA);
-        Log.i(TAG, "Binding application " + data.appInfo.packageName + " (" + data.processName + ")");
+        VLog.i(TAG, "Binding application " + data.appInfo.packageName + " (" + data.processName + ")");
         mBoundApplication = data;
         VirtualRuntime.setupRuntime(data.processName, data.appInfo);
         int targetSdkVersion = data.appInfo.targetSdkVersion;
@@ -282,7 +307,8 @@ public final class VClientImpl extends IVClient.Stub {
             if (HardwareRenderer.setupDiskCache != null) {
                 HardwareRenderer.setupDiskCache.call(codeCacheDir);
             }
-        } else {
+        } else if(!BuildCompat.isQ()) {
+            // Android Q, skip setupDiskCache.
             if (ThreadedRenderer.setupDiskCache != null) {
                 ThreadedRenderer.setupDiskCache.call(codeCacheDir);
             }
@@ -317,11 +343,15 @@ public final class VClientImpl extends IVClient.Stub {
             InvocationStubManager.getInstance().checkEnv(AppInstrumentation.class);
         }
 
-        if(XposedUtils.isEnabledXposed(packageName))
-            SandXposed.injectXposedModule(context, packageName, processName);
+        if(!NativeEngine.nativeGetIsX86())
+        {
+            if(XposedUtils.isEnabledXposed(packageName))
+            {
+                SandXposed.injectXposedModule(context, packageName, processName);
+            }
+        }
 
         mInitialApplication = LoadedApk.makeApplication.call(data.info, false, null);
-
 
         mirror.android.app.ActivityThread.mInitialApplication.set(mainThread, mInitialApplication);
         ContextFixer.fixContext(mInitialApplication);
@@ -335,8 +365,8 @@ public final class VClientImpl extends IVClient.Stub {
             lock.open();
             mTempLock = null;
         }
-        VirtualCore.get().getComponentDelegate().beforeApplicationCreate(mInitialApplication);
 
+        VirtualCore.get().getComponentDelegate().beforeApplicationCreate(mInitialApplication);
 
         try {
             mInstrumentation.callApplicationOnCreate(mInitialApplication);
@@ -419,6 +449,8 @@ public final class VClientImpl extends IVClient.Stub {
         NativeEngine.redirectDirectory("/sys/class/net/eth0/address", wifiMacAddressFile);
         NativeEngine.redirectDirectory("/sys/class/net/wifi/address", wifiMacAddressFile);
 
+        LinuxCompat.forgeProcDriver(false);
+
         NativeEngine.redirectDirectory("/data/data/" + info.packageName, info.dataDir);
         NativeEngine.redirectDirectory("/data/user/0/" + info.packageName, info.dataDir);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -430,6 +462,13 @@ public final class VClientImpl extends IVClient.Stub {
         NativeEngine.redirectDirectory("/data/data/" + info.packageName + "/lib/", libPath);
         NativeEngine.redirectDirectory("/data/user/0/" + info.packageName + "/lib/", libPath);
 
+        /*
+         * 禁用部分软件的检测
+         */
+         // NativeEngine.redirectFile("/proc/self/cgroup","/dev/null");
+         // NativeEngine.redirectFile("/proc/"+Process.myPid()+"/maps","/dev/null");
+
+        /*
         VirtualStorageManager vsManager = VirtualStorageManager.get();
         String vsPath = vsManager.getVirtualStorage(info.packageName, userId);
         boolean enable = vsManager.isVirtualStorageEnable(info.packageName, userId);
@@ -442,15 +481,49 @@ public final class VClientImpl extends IVClient.Stub {
                 }
             }
         }
+        */
 
         String szEnableRedirectStorage = BanNotificationProvider.getString(VirtualCore.get().getContext(),"StorageRedirect");
         if(szEnableRedirectStorage!=null)
         {
             try
             {
-                String szExtStoragePath = Environment.getExternalStorageDirectory().getAbsolutePath();
+                String szExtStoragePath;
+                if(BuildCompat.isR())
+                {
+                    try
+                    {
+                        szExtStoragePath =
+                                new File(
+                                        new File(VirtualCore.get().getContext().getCacheDir(),"v_user"),
+                                        info.packageName!=null?info.packageName:"shared"
+                                )
+                                        .getAbsolutePath();
+                    }catch (Exception e)
+                    {
+                        e.printStackTrace();
+                        szExtStoragePath = new File(VEnvironment.getDataAppPackageDirectory(info.packageName),"iFox")
+                                .getAbsolutePath();
+                    }
+                }
+                else if(BuildCompat.isQ())
+                {
+                    File lpFile = VirtualCore.get().getContext().getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+                    if(lpFile!=null)
+                        szExtStoragePath =
+                                lpFile.getAbsolutePath();
+                    else
+                        szExtStoragePath =
+                                new File(
+                                        new File(VirtualCore.get().getContext().getCacheDir(),"v_user"),
+                                        info.packageName!=null?info.packageName:"shared"
+                                )
+                                        .getAbsolutePath();
+                }
+                else
+                    szExtStoragePath = Environment.getExternalStorageDirectory().getAbsolutePath();
                 //新建一个File，传入文件夹目录
-                File file = new File(szExtStoragePath + "/skdir");
+                File file = new File(szExtStoragePath, "skdir");
 //判断文件夹是否存在，如果不存在就创建，否则不创建
                 if (!file.exists())
                 {
@@ -460,11 +533,33 @@ public final class VClientImpl extends IVClient.Stub {
                         VLog.d(TAG,"Make directory failed.");
                     }
                 }
-                NativeEngine.redirectDirectory(szExtStoragePath, szExtStoragePath + "/skdir");
+                HashSet<String> mps = getMountPoints();
+                for(String srtMp : mps)
+                {
+                    NativeEngine.redirectDirectory(srtMp, file.getAbsolutePath());
+                }
             }catch (Throwable e)
             {
                 // ignored.
                 e.printStackTrace();
+            }
+        }
+        else if(BuildCompat.isR())
+        {
+            HashSet<String> mps = getMountPoints();
+            File cacheDir =
+                    new File(
+                            new File(VirtualCore.get().getContext().getCacheDir(),"v_user"),
+                            info.packageName!=null?info.packageName:"shared"
+                    );
+            if(!cacheDir.exists())cacheDir.mkdirs();
+            for(String theMountPoint : mps)
+            {
+                File ksFile = new File(theMountPoint, "Android");
+                String newPath =
+                        cacheDir.getAbsolutePath();
+                String oldPath = ksFile.getAbsolutePath();
+                NativeEngine.redirectDirectory(oldPath, newPath);
             }
         }
 
@@ -473,15 +568,27 @@ public final class VClientImpl extends IVClient.Stub {
 
     @SuppressLint("SdCardPath")
     private HashSet<String> getMountPoints() {
-        HashSet<String> mountPoints = new HashSet<>(3);
+        HashSet<String> mountPoints = new HashSet<>();
         mountPoints.add("/mnt/sdcard/");
         mountPoints.add("/sdcard/");
+        try
+        {
+            mountPoints.add(Environment.getExternalStorageDirectory()
+                    .getAbsolutePath());
+        }catch (Throwable e)
+        {
+            e.printStackTrace();
+        }
         String[] points = StorageManagerCompat.getAllPoints(VirtualCore.get().getContext());
         if (points != null) {
             Collections.addAll(mountPoints, points);
         }
         return mountPoints;
+    }
 
+    public ClassLoader getClassLoader(String packageName)
+    {
+        return createPackageContext(packageName).getClassLoader();
     }
 
     private Context createPackageContext(String packageName) {
@@ -677,6 +784,14 @@ public final class VClientImpl extends IVClient.Stub {
     @Override
     public IBinder createProxyService(ComponentName component, IBinder binder) {
         return ProxyServiceFactory.getProxyService(getCurrentApplication(), component, binder);
+    }
+
+    @Override
+    public String toString()
+    {
+        String szDebugInfo = getDebugInfo();
+        if(!szDebugInfo.isEmpty())return szDebugInfo;
+        return super.toString();
     }
 
     @Override

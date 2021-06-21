@@ -36,6 +36,7 @@ import com.lody.virtual.client.hook.proxies.media.session.SessionManagerStub;
 import com.lody.virtual.client.hook.proxies.mount.MountServiceStub;
 import com.lody.virtual.client.hook.proxies.network.NetworkManagementStub;
 import com.lody.virtual.client.hook.proxies.notification.NotificationManagerStub;
+import com.lody.virtual.client.hook.proxies.people.PeopleManagerStub;
 import com.lody.virtual.client.hook.proxies.persistent_data_block.PersistentDataBlockServiceStub;
 import com.lody.virtual.client.hook.proxies.phonesubinfo.PhoneSubInfoStub;
 import com.lody.virtual.client.hook.proxies.pm.PackageManagerStub;
@@ -53,10 +54,13 @@ import com.lody.virtual.client.hook.proxies.wifi.WifiManagerStub;
 import com.lody.virtual.client.hook.proxies.wifi_scanner.WifiScannerStub;
 import com.lody.virtual.client.hook.proxies.window.WindowManagerStub;
 import com.lody.virtual.client.interfaces.IInjector;
+import com.lody.virtual.helper.compat.BuildCompat;
 import com.lody.virtual.helper.utils.OSUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import sk.vpkg.fox.FoxConnectivityStub;
 
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR1;
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
@@ -141,7 +145,9 @@ public final class InvocationStubManager {
 			addInjector(new AudioManagerStub());
 			addInjector(new SearchManagerStub());
 			addInjector(new ContentServiceStub());
-			addInjector(new ConnectivityStub());
+			if(BuildCompat.isR())
+				addInjector(new FoxConnectivityStub());
+			else addInjector(new ConnectivityStub());
 
 			if (Build.VERSION.SDK_INT >= JELLY_BEAN_MR2) {
 				addInjector(new VibratorStub());
@@ -187,6 +193,10 @@ public final class InvocationStubManager {
 			}
 			if (OSUtils.getInstance().isAndroidQ()) {
 				addInjector(new ActivityTaskManagerStub());
+			}
+			if(OSUtils.getInstance().isAndroidS())
+			{
+				addInjector(new PeopleManagerStub());
 			}
 		}
 	}

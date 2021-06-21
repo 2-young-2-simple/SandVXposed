@@ -9,6 +9,7 @@ import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.hook.base.MethodProxy;
 import com.lody.virtual.client.hook.utils.MethodParameterUtils;
 import com.lody.virtual.client.ipc.VNotificationManager;
+import com.lody.virtual.helper.compat.BuildCompat;
 import com.lody.virtual.helper.utils.ArrayUtils;
 import com.lody.virtual.helper.utils.VLog;
 
@@ -149,8 +150,8 @@ class MethodProxies {
             if (getHostPkg().equals(pkg)) {
                 return method.invoke(who, args);
             }
-            String tag = (String) args[1];
-            int id = (int) args[2];
+            String tag = (String) args[BuildCompat.isR()?2:1];
+            int id = (int) args[BuildCompat.isR()?3:2];
             SKVPackageNotificationHook hHook = new SKVPackageNotificationHook();
             try
             {
@@ -220,7 +221,7 @@ class MethodProxies {
         @Override
         public Object call(Object who, Method method, Object... args) throws Throwable {
             String pkg = (String) args[0];
-            Toast.makeText(VirtualCore.get().getContext(),pkg+5,Toast.LENGTH_SHORT).show();
+            // Toast.makeText(VirtualCore.get().getContext(),pkg+5,Toast.LENGTH_SHORT).show();
             if (getHostPkg().equals(pkg)) {
                 return method.invoke(who, args);
             }
@@ -237,7 +238,7 @@ class MethodProxies {
         @Override
         public Object call(Object who, Method method, Object... args) throws Throwable {
             String pkg = (String) args[0];
-            Toast.makeText(VirtualCore.get().getContext(),pkg+6,Toast.LENGTH_SHORT).show();
+            // Toast.makeText(VirtualCore.get().getContext(),pkg+6,Toast.LENGTH_SHORT).show();
             if (getHostPkg().equals(pkg)) {
                 return method.invoke(who, args);
             }
@@ -515,7 +516,8 @@ class MethodProxies {
 
         @Override
         public Object call(Object who, Method method, Object... args) throws Throwable {
-            args[0] = VirtualCore.get().getHostPkg();
+            //args[0] = VirtualCore.get().getHostPkg();
+            MethodParameterUtils.replaceLastUid(args);
             return method.invoke(who,args);
         }
     }
@@ -529,8 +531,22 @@ class MethodProxies {
 
         @Override
         public Object call(Object who, Method method, Object... args) throws Throwable {
+
+            MethodParameterUtils.replaceLastUid(args);
+            int sequence = Build.VERSION.SDK_INT >= 29 ? 2 : 1;
+            MethodParameterUtils.replaceSequenceAppPkg(args, sequence);
+            return method.invoke(who, args);
+            /*
             args[0] = VirtualCore.get().getHostPkg();
-            return method.invoke(who,args);
+            try
+            {
+                return method.invoke(who, args);
+            }catch (Throwable e)
+            {
+                e.printStackTrace();
+                return null;
+            }
+            */
         }
     }
 

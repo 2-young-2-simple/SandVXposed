@@ -4,7 +4,9 @@ import android.os.IInterface;
 
 import com.lody.virtual.client.hook.base.MethodInvocationProxy;
 import com.lody.virtual.client.hook.base.MethodInvocationStub;
-import com.lody.virtual.client.hook.base.ReplaceCallingPkgMethodProxy;
+import com.lody.virtual.client.hook.utils.MethodParameterUtils;
+
+import java.lang.reflect.Method;
 
 /**
  * @author Lody
@@ -22,6 +24,14 @@ public class WindowSessionPatch extends MethodInvocationProxy<MethodInvocationSt
 		addMethodProxy(new BaseMethodProxy("addToDisplayWithoutInputChannel"));
 		addMethodProxy(new BaseMethodProxy("addWithoutInputChannel"));
 		addMethodProxy(new BaseMethodProxy("relayout"));
+		addMethodProxy(new BaseMethodProxy("addToDisplayAsUser")
+		{
+			@Override
+			public Object call(Object who, Method method, Object... args) throws Throwable {
+				MethodParameterUtils.replaceLastUid(args);
+				return super.call(who, method, args);
+			}
+		});
 	}
 
 

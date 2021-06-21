@@ -37,19 +37,18 @@ import com.lody.virtual.server.pm.VPackageManagerService;
 import com.lody.virtual.server.pm.VUserManagerService;
 import com.lody.virtual.server.vs.VirtualStorageService;
 
-import mirror.android.app.job.IJobScheduler;
-
 /**
  * @author Lody
  */
-public final class BinderProvider extends ContentProvider {
+public class BinderProvider extends ContentProvider {
 
     private final ServiceFetcher mServiceFetcher = new ServiceFetcher();
 
     @Override
     public boolean onCreate() {
         Context context = getContext();
-        DaemonService.startup(context);
+        if(context!=null)
+            DaemonService.startup(context);
         if (!VirtualCore.get().isStartup()) {
             return true;
         }
@@ -75,6 +74,44 @@ public final class BinderProvider extends ContentProvider {
         return true;
     }
 
+    public BinderProvider(Context ctx)
+    {
+        // Just be used for restart.
+    }
+
+    public BinderProvider()
+    {
+        super();
+    }
+
+    public boolean onRestart(Context ctx)
+    {
+        DaemonService.startup(ctx);
+        if (!VirtualCore.get().isStartup()) {
+            return true;
+        }
+        VPackageManagerService.systemReady();
+        IPCBus.register(IPackageManager.class, VPackageManagerService.get());
+        VActivityManagerService.systemReady(ctx);
+        IPCBus.register(IActivityManager.class, VActivityManagerService.get());
+        IPCBus.register(IUserManager.class, VUserManagerService.get());
+        VAppManagerService.systemReady();
+        IPCBus.register(IAppManager.class, VAppManagerService.get());
+        BroadcastSystem.attach(VActivityManagerService.get(), VAppManagerService.get());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            IPCBus.register(IJobService.class, VJobSchedulerService.get());
+        }
+        VNotificationManagerService.systemReady(ctx);
+        IPCBus.register(INotificationManager.class, VNotificationManagerService.get());
+        VAppManagerService.get().scanApps();
+        VAccountManagerService.systemReady();
+        IPCBus.register(IAccountManager.class, VAccountManagerService.get());
+        IPCBus.register(IVirtualStorageService.class, VirtualStorageService.get());
+        IPCBus.register(IDeviceInfoManager.class, VDeviceManagerService.get());
+        IPCBus.register(IVirtualLocationManager.class, VirtualLocationService.get());
+        return true;
+    }
+
     @Override
     public Bundle call(String method, String arg, Bundle extras) {
         if ("@".equals(method)) {
@@ -83,7 +120,10 @@ public final class BinderProvider extends ContentProvider {
             return bundle;
         }
         if ("register".equals(method)) {
-
+        }
+        if("ensure_created".equals(method))
+        {
+            return new Bundle();
         }
         return null;
     }

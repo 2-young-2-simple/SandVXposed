@@ -44,6 +44,7 @@ import com.lody.virtual.helper.ipcbus.IPCBus;
 import com.lody.virtual.helper.ipcbus.IPCSingleton;
 import com.lody.virtual.helper.ipcbus.IServerCache;
 import com.lody.virtual.helper.utils.BitmapUtils;
+import com.lody.virtual.helper.utils.VLog;
 import com.lody.virtual.os.VUserHandle;
 import com.lody.virtual.remote.InstallResult;
 import com.lody.virtual.remote.InstalledAppInfo;
@@ -53,6 +54,7 @@ import com.lody.virtual.server.interfaces.IAppRequestListener;
 import com.lody.virtual.server.interfaces.IPackageObserver;
 import com.lody.virtual.server.interfaces.IUiCallback;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -184,7 +186,8 @@ public final class VirtualCore {
     public void startup(Context context) throws Throwable {
         if (!isStartUp) {
             if (Looper.myLooper() != Looper.getMainLooper()) {
-                throw new IllegalStateException("VirtualCore.startup() must called in main thread.");
+                // throw new IllegalStateException("VirtualCore.startup() must called in main thread.");
+                VLog.e("VirtualCore","VirtualCore.startup() must called in main thread.");
             }
             VASettings.STUB_CP_AUTHORITY = context.getPackageName() + "." + VASettings.STUB_DEF_AUTHORITY;
             ServiceManagerNative.SERVICE_CP_AUTH = context.getPackageName() + "." + ServiceManagerNative.SERVICE_DEF_AUTH;
@@ -458,11 +461,12 @@ public final class VirtualCore {
         }
         ApplicationInfo appInfo = setting.getApplicationInfo(userId);
         PackageManager pm = context.getPackageManager();
-        String name;
+        String name = "";
         Bitmap icon;
         try {
             CharSequence sequence = appInfo.loadLabel(pm);
-            name = sequence.toString();
+            if(sequence != null)
+                name = sequence.toString();
             icon = BitmapUtils.drawableToBitmap(appInfo.loadIcon(pm));
         } catch (Throwable e) {
             return false;
@@ -476,6 +480,17 @@ public final class VirtualCore {
             if (newIcon != null) {
                 icon = newIcon;
             }
+        }
+        try{
+            if(icon.getByteCount()>1000000)
+            {
+                // 图标过大
+                return false;
+            }
+        }
+        catch (Throwable e)
+        {
+            e.printStackTrace();
         }
         Intent targetIntent = getLaunchIntent(packageName, userId);
         if (targetIntent == null) {
@@ -493,6 +508,7 @@ public final class VirtualCore {
         if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O)
         {
             ShortcutManager shortcutManager = (ShortcutManager) context.getSystemService(Context.SHORTCUT_SERVICE);
+            if(shortcutManager==null)return false;
             if(shortcutManager.isRequestPinShortcutSupported()) {
                 ShortcutInfo info = null;
                 try
@@ -520,14 +536,20 @@ public final class VirtualCore {
         }
         else
         {
-            Intent addIntent = new Intent();
-            // 内置内容
-            addIntent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent);
-            addIntent.putExtra(Intent.EXTRA_SHORTCUT_NAME, name);
-            addIntent.putExtra("duplicate", true);
-            addIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, icon);
-            addIntent.setAction("com.android.launcher.action.INSTALL_SHORTCUT");
-            context.sendBroadcast(addIntent);
+            try{
+                Intent addIntent = new Intent();
+                // 内置内容
+                addIntent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent);
+                addIntent.putExtra(Intent.EXTRA_SHORTCUT_NAME, name);
+                addIntent.putExtra("duplicate", true);
+                addIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, icon);
+                addIntent.setAction("com.android.launcher.action.INSTALL_SHORTCUT");
+                context.sendBroadcast(addIntent);
+            }
+            catch (Throwable e)
+            {
+                e.printStackTrace();
+            }
         }
         return true;
     }
@@ -638,6 +660,17 @@ public final class VirtualCore {
             hHook.CleanPackage(pkgName);
         }
         catch (Throwable e)
+        {
+            e.printStackTrace();
+        }
+        try{
+            File ext = new File(context.getCacheDir(),"v_user");
+            ext = new File(ext, pkgName);
+            if(ext.exists())
+            {
+                if(!ext.delete())ext.deleteOnExit();
+            }
+        }catch (Exception e)
         {
             e.printStackTrace();
         }

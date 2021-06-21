@@ -19,8 +19,8 @@ import android.text.TextUtils;
 
 import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.fixer.ComponentFixer;
-import com.lody.virtual.client.ipc.VPackageManager;
 import com.lody.virtual.helper.collection.ArrayMap;
+import com.lody.virtual.helper.compat.BuildCompat;
 import com.lody.virtual.helper.compat.PackageParserCompat;
 import com.lody.virtual.helper.utils.FileUtils;
 import com.lody.virtual.helper.utils.VLog;
@@ -51,14 +51,49 @@ public class PackageParserEx {
     public static VPackage parsePackage(File packageFile) throws Throwable {
         PackageParser parser = PackageParserCompat.createParser(packageFile);
         PackageParser.Package p = PackageParserCompat.parsePackage(parser, packageFile, 0);
-        if (p.requestedPermissions.contains("android.permission.FAKE_PACKAGE_SIGNATURE")
-                && p.mAppMetaData != null
-                && p.mAppMetaData.containsKey("fake-signature")) {
-            String sig = p.mAppMetaData.getString("fake-signature");
-            p.mSignatures = new Signature[]{new Signature(sig)};
-            VLog.d(TAG, "Using fake-signature feature on : " + p.packageName);
-        } else {
-            PackageParserCompat.collectCertificates(parser, p, PackageParser.PARSE_IS_SYSTEM, true);
+        try
+        {
+            if (p.requestedPermissions.contains("android.permission.FAKE_PACKAGE_SIGNATURE")
+                    && p.mAppMetaData != null
+                    && p.mAppMetaData.containsKey("fake-signature"))
+            {
+                String sig = p.mAppMetaData.getString("fake-signature");
+                p.mSignatures = new Signature[]{new Signature(sig)};
+                VLog.d(TAG, "Using fake-signature feature on : " + p.packageName);
+            } else
+            {
+                PackageParserCompat.collectCertificates(parser, p, PackageParser.PARSE_IS_SYSTEM, true);
+            }
+        }catch (Throwable e)
+        {
+            e.printStackTrace();
+        }
+        try{
+            if(BuildCompat.isP())
+            {
+                if(p.mSigningDetails == null)
+                {
+                    // Call with SKSignature -> My signature API28
+                    PackageInfo mPkgInfo =
+                            VirtualCore.get().getContext().getPackageManager()
+                                    .getPackageInfo(VirtualCore.get().getContext().getPackageName(),
+                                            PackageManager.GET_SIGNING_CERTIFICATES);
+                    p.mSigningDetails = new PackageParser.SigningDetails(mPkgInfo.signingInfo.getApkContentsSigners());
+                    p.mSignatures = mPkgInfo.signingInfo.getApkContentsSigners();
+                }
+            }
+            else if(p.mSignatures == null)
+            {
+                // Call with SKSignature -> My signature
+                PackageInfo mPkgInfo =
+                        VirtualCore.get().getContext().getPackageManager()
+                                .getPackageInfo(VirtualCore.get().getContext().getPackageName(),
+                                        PackageManager.GET_SIGNATURES);
+                p.mSignatures = mPkgInfo.signatures;
+            }
+        }catch (Exception e)
+        {
+            e.printStackTrace();
         }
         return buildPackageCache(p);
     }
@@ -187,7 +222,6 @@ public class PackageParserEx {
         cache.mSharedUserLabel = p.mSharedUserLabel;
         cache.usesLibraries = p.usesLibraries;
         cache.mVersionCode = p.mVersionCode;
-        cache.mAppMetaData = p.mAppMetaData;
         cache.configPreferences = p.configPreferences;
         cache.reqFeatures = p.reqFeatures;
         addOwner(cache);

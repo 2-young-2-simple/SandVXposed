@@ -83,26 +83,6 @@ public class VActivityManager {
         if (info == null) {
             return ActivityManagerCompat.START_INTENT_NOT_RESOLVED;
         }
-        try
-        {
-            if(info.metaData!=null)
-            {
-                if (!is_checked)
-                {
-                    String szEnableRedirectStorage = BanNotificationProvider.getString(VirtualCore.get().getContext()
-                            , "enableFullScreen");
-                    if (szEnableRedirectStorage != null) is_fullscreen = true;
-                    is_checked = true;
-                }
-                if (is_fullscreen)
-                {
-                    info.metaData.putString("android.max_aspect", "2.1");
-                }
-            }
-        }catch (Throwable e)
-        {
-            e.printStackTrace();
-        }
         return startActivity(intent, info, null, null, null, 0, userId);
     }
 
@@ -506,6 +486,16 @@ public class VActivityManager {
             getService().notifyBadgerChange(info);
         } catch (RemoteException e) {
             VirtualRuntime.crash(e);
+        }
+    }
+
+    public void onActivityResumed(IBinder token)
+    {
+        try {
+            getService().onActivityResumed(VUserHandle.myUserId(), token);
+        } catch (RemoteException e)
+        {
+            e.printStackTrace();
         }
     }
 }

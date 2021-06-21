@@ -19,6 +19,11 @@ public class BuildCompat {
         return 0;
     }
 
+    public static boolean isNougat()
+    {
+        return Build.VERSION.SDK_INT>=Build.VERSION_CODES.N;
+    }
+
     public static boolean isOreo() {
 
         return (Build.VERSION.SDK_INT == 25 && getPreviewSDKInt() > 0)
@@ -29,5 +34,20 @@ public class BuildCompat {
         final int SDK = Build.VERSION.SDK_INT;
         final int Q = 29;
         return SDK == Q - 1 && getPreviewSDKInt() > 0 || Build.VERSION.SDK_INT >= Q;
+    }
+
+    public static boolean isP()
+    {
+        return Build.VERSION_CODES.P<=Build.VERSION.SDK_INT;
+    }
+
+    public static boolean isR()
+    {
+        return Build.VERSION.SDK_INT>=Build.VERSION_CODES.R;
+    }
+
+    public static boolean isS()
+    {
+        return Build.VERSION.SDK_INT>=Build.VERSION_CODES.S || (isR() && getPreviewSDKInt() > 0);
     }
 }

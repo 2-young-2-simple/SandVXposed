@@ -29,14 +29,19 @@ import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.baidu.mobstat.StatService;
 import com.lody.virtual.GmsSupport;
 import com.lody.virtual.client.core.RomChecker;
+import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.ipc.VActivityManager;
 import com.lody.virtual.client.stub.ChooseTypeAndAccountActivity;
 import com.lody.virtual.os.VUserInfo;
 import com.lody.virtual.os.VUserManager;
 import com.sk.app.RenameApp;
 import com.sk.fwindow.skFloattingWin;
+import com.sk.installapp.ManualInstallAct;
+import com.sk.listapp.AppPwdSetting;
+import com.sk.listapp.XAppManager;
 import com.sk.verify.msVerify;
 import com.sk.vloc.VLocSetting;
 
@@ -47,6 +52,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import io.virtualapp.BuildConfig;
 import io.virtualapp.R;
 import io.virtualapp.VCommends;
 import io.virtualapp.abs.nestedadapter.SmartRecyclerAdapter;
@@ -142,7 +148,15 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
                     .setPositiveButton(R.string.accept, (dialog, which) ->
                             Once.markDone("user_license"))
                     .create().show();
+            StatService.setAuthorizedState(this, false);
         }
+        else
+        {
+            StatService.setAuthorizedState(this, true);
+        }
+        StatService.autoTrace(this);
+        StatService.setDebugOn(BuildConfig.DEBUG);
+        StatService.start(this);
     }
 
     private void initMenu() {
@@ -186,18 +200,20 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
                     }).show();
             return false;
         });
-        /*
-        // 去掉没用的项目防止卡顿
-        menu.add("虚拟存储").setIcon(R.drawable.ic_vs).setOnMenuItemClickListener(item -> {
-            Toast.makeText(this, "The coming", Toast.LENGTH_SHORT).show();
+        menu.add(R.string.sk_install_app_by_path).setIcon(R.drawable.ic_vs).setOnMenuItemClickListener(item -> {
+            startActivity(
+                    new Intent(
+                            this,
+                            ManualInstallAct.class
+                    )
+            );
             return false;
         });
         menu.add("通知管理").setIcon(R.drawable.ic_notification).setOnMenuItemClickListener(item -> {
-            Toast.makeText(this, "The coming", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, XAppManager.class));
             return false;
         });
-        */
-        menu.add("虚拟位置").setIcon(R.drawable.ic_notification).setOnMenuItemClickListener(item -> {
+        menu.add("虚拟位置").setIcon(R.drawable.ic_loc).setOnMenuItemClickListener(item -> {
             // startActivity(new Intent(this, VirtualLocationSettings.class));
             startActivity(new Intent(this, VLocSetting.class));
             return true;
@@ -206,7 +222,17 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
             startActivity(new Intent(this, SettingAct.class));
             return false;
         });
-        menu.add(R.string.restartapp).setIcon(R.drawable.ic_settings).setOnMenuItemClickListener(item -> {
+        menu.add(R.string.pwd_setting).setIcon(R.drawable.ic_sec).setOnMenuItemClickListener(item ->
+                {
+                    startActivity(
+                            new Intent(
+                                    this,
+                                    AppPwdSetting.class)
+                    );
+                    return false;
+                }
+        );
+        menu.add(R.string.restartapp).setIcon(R.drawable.ic_restart).setOnMenuItemClickListener(item -> {
             AlertDialog.Builder hBuilder = new AlertDialog.Builder(HomeActivity.this);
             hBuilder.setTitle(R.string.restartapp).setMessage(R.string.ensurerestart);
             hBuilder.
@@ -218,7 +244,25 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
                     setPositiveButton("√", (dialog, which) ->
                     {
                         VActivityManager.get().killAllApps();
-                        Toast.makeText(this,R.string.restartfinish,Toast.LENGTH_LONG).show();
+                        runOnUiThread(
+                                () ->
+                                {
+                                    try
+                                    {
+                                        VirtualCore.get().startup(HomeActivity.this);
+                                        com.lody.virtual.server.BinderProvider lpProvider =
+                                                new com.lody.virtual.server.BinderProvider(
+                                                HomeActivity.this
+                                        );
+                                        // 重启应用
+                                        lpProvider.onRestart(HomeActivity.this);
+                                    } catch (Throwable throwable)
+                                    {
+                                        throwable.printStackTrace();
+                                    }
+                                    Toast.makeText(this,R.string.restartfinish,Toast.LENGTH_LONG).show();
+                                }
+                        );
                     });
             hBuilder.setCancelable(false).create().show();
             return false;
@@ -361,15 +405,20 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
     }
 
     private void deleteApp(int position) {
-        AppData data = mLaunchpadAdapter.getList().get(position);
-        new AlertDialog.Builder(this)
-                .setTitle("删除应用")
-                .setMessage("您真的要删除 " + data.getName() + "?")
-                .setPositiveButton(android.R.string.yes, (dialog, which) -> {
-                    mPresenter.deleteApp(data);
-                })
-                .setNegativeButton(android.R.string.no, null)
-                .show();
+        try
+        {
+            AppData data = mLaunchpadAdapter.getList().get(position);
+            new AlertDialog.Builder(this)
+                    .setTitle("删除应用")
+                    .setMessage("您真的要删除 " + data.getName() + "?")
+                    .setPositiveButton(android.R.string.yes, (dialog, which) ->
+                            mPresenter.deleteApp(data))
+                    .setNegativeButton(android.R.string.no, null)
+                    .show();
+        }catch (Throwable e)
+        {
+            e.printStackTrace();
+        }
     }
 
     private void createShortcut(int position) {

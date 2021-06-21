@@ -1,8 +1,8 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 29
-    buildToolsVersion '28.0.3'
+    compileSdkVersion "android-S"
+    buildToolsVersion '30.0.3'
 
     defaultConfig {
         minSdkVersion 19
@@ -11,8 +11,7 @@ android {
         versionName "1.0"
         externalNativeBuild {
             ndkBuild {
-                abiFilters "armeabi-v7a"
-                abiFilters "arm64-v8a"
+                abiFilters "armeabi-v7a", "x86"
             }
         }
     }
@@ -36,14 +35,24 @@ android {
         warning 'NewApi','OnClick'
     }
 }
+gradle.startParameter.getTaskNames().each { task ->
+    println("task: " + task)
+    //library里 BuildConfig.DEBUG默认一直是flase;所以需要自定义
+    if(task.contains("Debug")){
+        android{
+            defaultPublishConfig "debug"
+        }
 
+    }else if(task.contains("Release")){
+        android{
+            defaultPublishConfig "release"
+        }
+    }
+}
 
 dependencies {
     api fileTree(include: ['*.jar'], dir: 'libs')
-    //    compile project(':hooklib')
-    //    compile project(':xposedcompat')
-    api 'com.swift.sandhook:hooklib:4.0.2'
-    api 'com.swift.sandhook:xposedcompat:4.0.2'
     api 'com.trend.lazyinject:lib:3.4.0-beta'
+    implementation 'me.weishu:free_reflection:3.0.1'
     annotationProcessor 'com.trend.lazyinject:compiler:3.4.0-beta'
 }

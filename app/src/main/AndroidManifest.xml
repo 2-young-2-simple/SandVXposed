@@ -1,30 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="io.virtualapp">
 
+    <uses-permission android:name="android.permission.BROADCAST_CLOSE_SYSTEM_DIALOGS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
     <application
         android:name=".VApp"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_descriptor"
         android:icon="@mipmap/ic_launcher"
-        android:networkSecurityConfig="@xml/sknetsec"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme">
-        <uses-library android:name="org.apache.http.legacy" android:required="false" />
-        <meta-data android:name="android.max_aspect" android:value="2.1" />
-        <activity android:name="com.sk.listapp.share_to_svxp"
+        android:networkSecurityConfig="@xml/sknetsec"
+        android:theme="@style/AppTheme"
+        tools:ignore="UnusedAttribute">
+        <meta-data
+            android:name="BaiduMobAd_STAT_ID"
+            android:value="ed51395236" />
+        <meta-data
+            android:name="BaiduMobAd_CHANNEL"
+            android:value="SandVXposed" />
+        <meta-data
+            android:name="BaiduMobAd_EXCEPTION_LOG"
+            android:value="true" />
+        <meta-data
+            android:name="BaiduMobAd_ONLY_WIFI"
+            android:value="false" />
+        <meta-data
+            android:name="BaiduMobAd_CELL_LOCATION"
+            android:value="true" />
+        <meta-data
+            android:name="BaiduMobAd_GPS_LOCATION"
+            android:value="false" />
+        <meta-data
+            android:name="BaiduMobAd_WIFI_LOCATION"
+            android:value="true" />
+
+        <activity
+            android:name="com.zhongcheng.openva.zchome.ZCHome"
+            android:label="@string/title_activity_zchome"
+            android:theme="@style/Theme.MaterialComponents.Light.NoActionBar">
+        </activity>
+        <activity
+            android:name="com.sk.desktop.SKDesktop"
             android:launchMode="singleInstance"
-            android:theme="@style/Theme.AppCompat.DayNight.Dialog"
+            android:theme="@style/ShowWallpaper">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.MONKEY" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.sk.installapp.ManualInstallAct"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance" />
+        <activity
+            android:name="com.sk.listapp.AppPwdSetting"
+            android:launchMode="singleInstance" />
+        <activity
+            android:name="com.sk.verify.SKAppLock"
+            android:launchMode="singleInstance" />
+
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
+
+        <meta-data
+            android:name="android.max_aspect"
+            android:value="2.3" />
+
+        <activity
+            android:name="com.sk.listapp.share_to_svxp"
             android:configChanges="keyboard|keyboardHidden|orientation"
             android:excludeFromRecents="true"
-            android:label="@string/shared_to_inner_app">
+            android:label="@string/shared_to_inner_app"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.AppCompat.DayNight.Dialog">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
@@ -70,9 +135,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.INSTALL_PACKAGE" />
-
                 <category android:name="android.intent.category.DEFAULT" />
-
                 <data android:scheme="content" />
                 <data android:scheme="file" />
                 <data android:mimeType="application/vnd.android.package-archive" />
@@ -81,17 +144,29 @@
         <activity
             android:name="com.sk.listapp.XAppManager"
             android:label="@string/title_activity_xapp_manager"
-            android:launchMode="singleInstance" />
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         <activity
             android:name=".home.ShortcutAppActivity"
             android:exported="true"
-            android:launchMode="singleInstance">
+            android:launchMode="singleInstance"
+            android:icon="@drawable/weixin"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="com.sk.vxpmain" />
-
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!--activity-alias
+            android:targetActivity=".home.ShortcutAppActivity"
+            android:name="微信"
+            android:label="微信"
+            android:icon="@drawable/weixin">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias-->
         <activity
             android:name=".home.adapters.AppChooseAct"
             android:launchMode="singleInstance" />
@@ -105,20 +180,19 @@
 
         <activity
             android:name=".splash.SplashActivity"
+            android:excludeFromRecents="true"
             android:theme="@style/AppTheme">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-
-                <!-- category android:name="android.intent.category.HOME" / -->
-                <!-- category android:name="android.intent.category.DEFAULT" / -->
-            </intent-filter>
         </activity>
         <activity
             android:name=".home.HomeActivity"
             android:launchMode="singleInstance"
-            android:theme="@style/UITheme" />
+            android:label="@string/old_launcher"
+            android:theme="@style/UITheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".home.ListAppActivity"
             android:theme="@style/UITheme" />

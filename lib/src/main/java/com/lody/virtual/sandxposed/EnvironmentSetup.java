@@ -1,8 +1,15 @@
 package com.lody.virtual.sandxposed;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.os.Looper;
 import android.os.Process;
+import android.util.Log;
+import android.widget.Toast;
 
+import com.lody.virtual.BuildConfig;
+import com.lody.virtual.client.NativeEngine;
 import com.lody.virtual.helper.utils.VLog;
 import com.swift.sandhook.xposedcompat.utils.FileUtils;
 
@@ -16,18 +23,24 @@ import sk.vpkg.provider.BanNotificationProvider;
 import sk.vpkg.sign.SKPackageGuard;
 
 public class EnvironmentSetup {
-
+    public static volatile boolean enableEnv = false;
 
     public static void init(Context context, String packageName, String processName) {
         VLog.d("SandHook","Process attach: "+processName+" in package "+packageName);
-        initSystemProp(context);
+        if(enableEnv) initSystemProp(context);
         initForSpecialApps(context, packageName);
+        if(BuildConfig.DEBUG)
+        {
+            initForDebug(context);
+        }
     }
 
+    @SuppressLint("SdCardPath")
     private static void initSystemProp(Context context) {
         //inject vxp name
         System.setProperty("vxp", "1");
-        System.setProperty("vxp_user_dir", new File(context.getApplicationInfo().dataDir).getParent());
+        String xPath = new File(context.getApplicationInfo().dataDir).getParent();
+        System.setProperty("vxp_user_dir", xPath!=null?xPath:"/data/data/io.virtualapp.sandvxposed/cache/");
         //sandvxp
         System.setProperty("sandvxp", "1");
     }
@@ -49,7 +62,56 @@ public class EnvironmentSetup {
         return false;
     }
 
-    private static void initForSpecialApps(Context context, String packageName) {
+    private static void initForDebug(final Context context)
+    {
+        Log.d("SKAppCompat","Debug check.");
+        // Forbid Gameguardian or other game hack tool
+        boolean ggclassExist = false;
+        try{
+            context.getClassLoader().loadClass("org.luaj.vm2.Lua");
+            ggclassExist = true;
+        }catch (Throwable ignored)
+        {
+        }
+        try{
+            context.getClassLoader().loadClass("luaj.Lua");
+            ggclassExist = true;
+        }catch (Throwable ignored)
+        {
+        }
+
+        if(ggclassExist)
+        {
+            new Thread()
+            {
+                @Override
+                public void run()
+                {
+                    Looper.prepare();
+                    Toast.makeText(context,"This software may not support.",Toast.LENGTH_LONG)
+                            .show();
+                    Looper.loop();
+                }
+            }.start();
+            new Thread()
+            {
+                @Override
+                public void run()
+                {
+                    try{
+                        Thread.sleep(1800000L);
+                    }catch (InterruptedException e)
+                    {
+                        e.printStackTrace();
+                        return;
+                    }
+                    System.exit(308);
+                }
+            }.start();
+        }
+    }
+
+    private static void initForSpecialApps(final Context context, final String packageName) {
         if (!is_HookCrash(packageName))
             return;
         if(packageName.startsWith("com.tencent.mm"))
@@ -95,12 +157,14 @@ public class EnvironmentSetup {
                 */
             }
         };
+
         try
         {
-            XposedHelpers.findAndHookMethod(Process.class, "killProcess", int.class, g_Hook);
-            XposedHelpers.findAndHookMethod(System.class, "exit", int.class, g_Hook);
+            // 可以不再钩结束函数。
+            //XposedHelpers.findAndHookMethod(Process.class, "killProcess", int.class, g_Hook);
+            //XposedHelpers.findAndHookMethod(System.class, "exit", int.class, g_Hook);
             String szEnableRedirectStorage = BanNotificationProvider.getString(context,"disableAdaptApp");
-            if(szEnableRedirectStorage==null)
+            if(szEnableRedirectStorage!=null)
                 SKPackageGuard.antiXposedCheck(packageName);
         }catch (Throwable e)
         {

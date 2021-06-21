@@ -748,7 +748,7 @@ HOOK_DEF(void*, do_dlopen_V19, const char *filename, int flag, const void *extin
     const char *redirect_path = relocate_path(filename, &res);
     void *ret = orig_do_dlopen_V19(redirect_path, flag, extinfo);
     onSoLoaded(filename, ret);
-    ALOGD("do_dlopen : %s, return : %p.", redirect_path, ret);
+    ALOGD("do_dlopen19 : %s, return : %p.", redirect_path, ret);
     FREE(redirect_path, filename);
     return ret;
 }
@@ -759,7 +759,7 @@ HOOK_DEF(void*, do_dlopen_V24, const char *name, int flags, const void *extinfo,
     const char *redirect_path = relocate_path(name, &res);
     void *ret = orig_do_dlopen_V24(redirect_path, flags, extinfo, caller_addr);
     onSoLoaded(name, ret);
-    ALOGD("do_dlopen : %s, return : %p.", redirect_path, ret);
+    ALOGD("do_dlopen24 : %s, return : %p.", redirect_path, ret);
     FREE(redirect_path, name);
     return ret;
 }
@@ -790,20 +790,20 @@ __END_DECLS
 void onSoLoaded(const char *name, void *handle) {
 }
 
-int findSymbol(const char *name, const char *libn,
+bool findSymbol(const char *name, const char *libn,
                unsigned long *addr) {
-    return find_name(getpid(), name, libn, addr);
+    return ((find_name(getpid(), name, libn, addr))==0);
 }
 
 __always_inline void hook_dlopen(int api_level) {
     void *symbol = NULL;
     if (api_level > 23) {
         if (findSymbol("__dl__Z9do_dlopenPKciPK17android_dlextinfoPv", "linker",
-                       (unsigned long *) &symbol) == 0) {
+                       (unsigned long *) &symbol)) {
             MSHookFunction(symbol, (void *) new_do_dlopen_V24,
                           (void **) &orig_do_dlopen_V24);
         } else if (findSymbol("__dl__Z9do_dlopenPKciPK17android_dlextinfoPKv", "linker",
-                              (unsigned long *) &symbol) == 0) {
+                              (unsigned long *) &symbol)) {
             MSHookFunction(symbol, (void *) new_do_dlopen_V24,
                            (void **) &orig_do_dlopen_V24);
         } else {
@@ -811,20 +811,20 @@ __always_inline void hook_dlopen(int api_level) {
         }
     } else if (api_level >= 19) {
         if (findSymbol("__dl__Z9do_dlopenPKciPK17android_dlextinfo", "linker",
-                       (unsigned long *) &symbol) == 0) {
+                       (unsigned long *) &symbol)) {
             MSHookFunction(symbol, (void *) new_do_dlopen_V19,
                           (void **) &orig_do_dlopen_V19);
         }
     } else {
         if (findSymbol("__dl_dlopen", "linker",
-                       (unsigned long *) &symbol) == 0) {
+                       (unsigned long *) &symbol)) {
             MSHookFunction(symbol, (void *) new_dlopen, (void **) &orig_dlopen);
         }
     }
 }
 
 
-void IOUniformer::startUniformer(const char *so_path, int api_level, int preview_api_level) {
+void IOUniformer::startUniformer(const char *so_path, int api_level, int preview_api_level){
 
     g_api_level = api_level;
     g_preview_api_level = preview_api_level;
@@ -888,9 +888,9 @@ void IOUniformer::startUniformer(const char *so_path, int api_level, int preview
         }
         dlclose(handle);
     }
-    if (api_level >= 28 && preview_api_level > 0) {
-        ALOGE("Android Q, Skip hook dlopen");
-    } else {
-        hook_dlopen(api_level);
+    if (api_level < 28) {
+#ifdef __arm__
+        //hook_dlopen(api_level);
+#endif
     }
 }
